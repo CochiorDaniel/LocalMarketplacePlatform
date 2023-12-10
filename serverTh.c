@@ -33,8 +33,8 @@ typedef struct thData{
 
 typedef struct {
     char command[50];
-    char **params;  // Vector de șiruri pentru parametrii
-    int numParams;  // Numărul de parametrii
+    char **params;      // Vector de șiruri pentru parametrii
+    int numParams;  
 } CommandParams;
 
 static void *treat(void *); /* functia executata de fiecare thread ce realizeaza comunicarea cu clientii */
@@ -352,6 +352,18 @@ char* modificare_sold(char *cmd){
     return result;
 }
 
+char* logout_client(char *cmd){
+    char* result = (char*)calloc(MAX_COMMAND_LENGTH, sizeof(char));
+    if(result == NULL){
+        perror("Eroare la alocarea de memorie");
+        exit(EXIT_FAILURE);
+    }
+
+    strcpy(result, "Comanda <logout> a fost receptionata!");
+
+    return result;
+}
+
 char* help_cmd(){
     char* result = (char*)calloc(MAX_COMMAND_LENGTH, sizeof(char));
     if (result == NULL) {
@@ -436,6 +448,9 @@ char* manager_comenzi(char *comanda)
     }
     else if (strstr(comanda, "help")){
         return help_cmd();
+    }
+    else if(strstr(comanda, "logout")){
+        return logout_client(comanda);
     }
     else if (strstr(comanda, "exit"))
     {
