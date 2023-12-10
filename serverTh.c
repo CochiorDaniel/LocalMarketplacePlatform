@@ -132,6 +132,7 @@ char* creare_cont(char *cmd){
         strcat(result, "\n");
     }
 
+    freeCommandParams(&params);
     return result;
 }
 
@@ -183,8 +184,26 @@ char* modificare_oferta(char *cmd){
         exit(EXIT_FAILURE);
     }
 
-    strcpy(result, "Comanda <modificare oferta> a fost receptionata!");
+    CommandParams params = parseCommand(cmd);
 
+    if(params.numParams != 3){
+        strcat(result, "Numarul de parametrii este incorect!\n");
+        strcpy(result, "Comanda trebuie sa fie de forma: \n");
+        strcat(result, "modificare oferta: <id> <nume_produs> <pret_produs>\n");
+        freeCommandParams(&params);
+        return result;
+    }
+
+    //strcpy(result, "Comanda <modificare oferta> a fost receptionata!");
+    strcat(result, "S-a receptionat comanda: ");
+    strcat(result, params.command);
+    strcat(result, "\n Cu urmatorii parametrii: \n");
+    for(int i=0; i<params.numParams; i++){
+        strcat(result, params.params[i]);
+        strcat(result, "\n");
+    }
+
+    freeCommandParams(&params);
     return result;
 }
 
@@ -195,8 +214,27 @@ char* stergere_oferta(char *cmd){
         exit(EXIT_FAILURE);
     }
 
-    strcpy(result, "Comanda <stergere oferta> a fost receptionata!");
+    CommandParams params = parseCommand(cmd);
 
+    if(params.numParams != 1){
+        strcat(result, "Numarul de parametrii este incorect!\n");
+        strcpy(result, "Comanda trebuie sa fie de forma: \n");
+        strcat(result, "stergere oferta: <id>\n");
+        freeCommandParams(&params);
+        return result;
+    }
+
+    //strcpy(result, "Comanda <stergere oferta> a fost receptionata!");
+    strcat(result, "S-a receptionat comanda: ");
+    strcat(result, params.command);
+    strcat(result, "\n Cu urmatorii parametrii: \n");
+    for(int i=0; i<params.numParams; i++){
+        strcat(result, params.params[i]);
+        strcat(result, "\n");
+    }
+
+    // de verificat ca produsul sa nu fi fost cumparat
+    freeCommandParams(&params);
     return result;
 }
 
@@ -209,6 +247,7 @@ char* istoric_achizitii(char *cmd){
 
     strcpy(result, "Comanda <istoric achizitii> a fost receptionata!");
 
+    // dupa id-ul clientului
     return result;
 }
 
@@ -218,9 +257,27 @@ char* cumparare_produs(char *cmd){
         perror("Eroare la alocarea de memorie");
         exit(EXIT_FAILURE);
     }
-    
-    strcpy(result, "Comanda <cumparare produs> a fost receptionata!");
 
+    CommandParams params = parseCommand(cmd);
+
+    if(params.numParams != 1){
+        strcat(result, "Numarul de parametrii este incorect!\n");
+        strcpy(result, "Comanda trebuie sa fie de forma: \n");
+        strcat(result, "cumparare produs: <id>\n");
+        freeCommandParams(&params);
+        return result;
+    }
+    
+    //strcpy(result, "Comanda <cumparare produs> a fost receptionata!");
+    strcat(result, "S-a receptionat comanda: ");
+    strcat(result, params.command);
+    strcat(result, "\n Cu urmatorii parametrii: \n");
+    for(int i=0; i<params.numParams; i++){
+        strcat(result, params.params[i]);
+        strcat(result, "\n");
+    }
+
+    freeCommandParams(&params);
     return result;
 }
 
@@ -231,8 +288,26 @@ char* cautare_produs(char *cmd){
         exit(EXIT_FAILURE);
     }
     
-    strcpy(result, "Comanda <cautare produs> a fost receptionata!");
+    CommandParams params = parseCommand(cmd);
 
+    if(params.numParams != 1){
+        strcat(result, "Numarul de parametrii este incorect!\n");
+        strcpy(result, "Comanda trebuie sa fie de forma: \n");
+        strcat(result, "cautare produs: <nume_produs>\n");
+        freeCommandParams(&params);
+        return result;
+    }
+
+    //strcpy(result, "Comanda <cautare produs> a fost receptionata!");
+    strcat(result, "S-a receptionat comanda: ");
+    strcat(result, params.command);
+    strcat(result, "\n Cu urmatorii parametrii: \n");
+    for(int i=0; i<params.numParams; i++){
+        strcat(result, params.params[i]);
+        strcat(result, "\n");
+    }
+
+    freeCommandParams(&params);
     return result;
 }
 
@@ -254,8 +329,25 @@ char* modificare_sold(char *cmd){
         perror("Eroare la alocarea de memorie");
         exit(EXIT_FAILURE);
     }
+
+    CommandParams params = parseCommand(cmd);
+
+    if(params.numParams != 2){
+        strcat(result, "Numarul de parametrii este incorect!\n");
+        strcpy(result, "Comanda trebuie sa fie de forma: \n");
+        strcat(result, "modificare sold: <adaugare/retragere> <suma>\n");
+        freeCommandParams(&params);
+        return result;
+    }
     
-    strcpy(result, "Comanda <modificare sold> a fost receptionata!");
+    //strcpy(result, "Comanda <modificare sold> a fost receptionata!");
+    strcat(result, "S-a receptionat comanda: ");
+    strcat(result,params.command);
+    strcat(result, "\n Cu urmatorii parametrii: \n");
+    for(int i=0; i<params.numParams; i++){
+        strcat(result,params.params[i]);
+        strcat(result, "\n");
+    }
 
     return result;
 }
@@ -269,16 +361,16 @@ char* help_cmd(){
     
     strcpy(result, "Comenzile disponibile sunt:\n");
     strcat(result, "1) login: <username> <password>\n");
-    strcat(result, "2) creare cont\n");
+    strcat(result, "2) creare cont: <username> <password> <sold>\n");
     strcat(result, "3) lista produse\n");
     strcat(result, "4) creare oferta: <nume_produs> <pret_produs>\n");
-    strcat(result, "5) modificare oferta\n");
-    strcat(result, "6) stergere oferta\n");
+    strcat(result, "5) modificare oferta: <id> <nume_produs> <pret_produs>\n");
+    strcat(result, "6) stergere oferta: <id>\n");
     strcat(result, "7) istoric achizitii\n");
-    strcat(result, "8) cumparare produs\n");
-    strcat(result, "9) cautare produs\n");
-    strcat(result, "10) sold\n");
-    strcat(result, "11) modificare sold\n");
+    strcat(result, "8) cumparare produs: <id>\n");
+    strcat(result, "9) cautare produs: <nume_produs>\n");
+    strcat(result, "10) vizualizare sold\n");
+    strcat(result, "11) modificare sold: <adaugare/retragere> <suma>\n");
     strcat(result, "12) exit\n");
 
     return result;
@@ -334,7 +426,7 @@ char* manager_comenzi(char *comanda)
     {
         return cautare_produs(comanda);
     }
-    else if (strstr(comanda, "sold"))
+    else if (strstr(comanda, "vizualizare sold"))
     {
         return vizualizare_sold(comanda);
     }

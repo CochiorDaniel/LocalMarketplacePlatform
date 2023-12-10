@@ -62,6 +62,8 @@ int main (int argc, char *argv[])
     }
 
   int iesire = 1;
+  printf("=== LocalMarketplacePlatform ===\n");
+  printf("Tastati comanda <help> pentru a vedea comenzile disponibile! \n");
   while(1){
   /* citirea mesajului */
   printf ("[client]Introduceti o comanda: ");
@@ -92,7 +94,7 @@ int main (int argc, char *argv[])
         }
         fflush(stdout);
         /* afisam mesajul primit */
-        printf ("[client]Mesajul primit este: %s\n", nr);
+        printf ("[client]Mesajul primit este:\n %s\n", nr);
         if(strcmp(nr, "exit") == 0){
             exit(1);
         }
