@@ -114,8 +114,23 @@ char* creare_cont(char *cmd){
         perror("Eroare la alocarea de memorie");
         exit(EXIT_FAILURE);
     }
+    CommandParams params = parseCommand(cmd);
+    if(params.numParams != 3){
+        strcat(result, "Numarul de parametrii este incorect!\n");
+        strcpy(result, "Comanda trebuie sa fie de forma: \n");
+        strcat(result, "creare cont: <username> <password> <sold>\n");
+        freeCommandParams(&params);
+        return result;
+    }
 
-    strcpy(result, "Comanda <creare cont> a fost receptionata!");
+    //strcpy(result, "Comanda <creare cont> a fost receptionata!");
+    strcat(result, "S-a receptionat comanda: ");
+    strcat(result, params.command);
+    strcat(result, "\n Cu urmatorii parametrii: \n");
+    for(int i=0; i<params.numParams; i++){
+        strcat(result, params.params[i]);
+        strcat(result, "\n");
+    }
 
     return result;
 }
