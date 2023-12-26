@@ -1,12 +1,3 @@
-/* servTCPConcTh2.c - Exemplu de server TCP concurent care deserveste clientii
-   prin crearea unui thread pentru fiecare client.
-   Asteapta un numar de la clienti si intoarce clientilor numarul incrementat.
-	Intoarce corect identificatorul din program al thread-ului.
-  
-   
-   Autor: Lenuta Alboaie  <adria@info.uaic.ro> (c)
-*/
-
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -18,6 +9,7 @@
 #include <signal.h>
 #include <pthread.h>
 #include <stdint.h> 
+#include <sqlite3.h>
 
 /* portul folosit */
 #define PORT 2909
@@ -67,19 +59,33 @@ CommandParams parseCommand(char *input) {
     return result;
 }
 
-char* exit_f(){
+char* exit_f(int *id){
     char* result = (char*)calloc(MAX_COMMAND_LENGTH, sizeof(char));
     if (result == NULL) {
         perror("Eroare la alocarea de memorie");
         exit(EXIT_FAILURE);
     }
 
+    sqlite3_stmt *stmt_upd;
+    sqlite3 *db;
+    int open_db = sqlite3_open("mkDB.db", &db);
+    if(open_db != SQLITE_OK){
+        printf("Eroare la deschiderea bazei de date!\n");
+        exit(EXIT_FAILURE);
+    }
+    int res_upd;
+
+    char *query2 = sqlite3_mprintf("UPDATE Useri SET logged = 0 WHERE id = '%d';", *id);
+    res_upd = sqlite3_prepare_v2(db, query2, -1, &stmt_upd, 0);
+    sqlite3_step(stmt_upd);
+    sqlite3_finalize(stmt_upd);
+    sqlite3_close(db);
     strcpy(result, "exit");
 
     return result;
 }
 
-char* login_client(char *cmd){
+char* login_client(char *cmd, int *id){
     char* result = (char*)calloc(MAX_COMMAND_LENGTH, sizeof(char));
     if (result == NULL) {
         perror("Eroare la alocarea de memorie");
@@ -94,14 +100,45 @@ char* login_client(char *cmd){
         freeCommandParams(&params);
         return result;
     }
-
-    //strcpy(result, "Comanda login a fost receptionata!");
-    strcat(result, "S-a receptionat comanda: ");
-    strcat(result, params.command);
-    strcat(result, "\n Cu urmatorii parametrii: \n");
-    for(int i=0; i<params.numParams; i++){
-        strcat(result, params.params[i]);
-        strcat(result, "\n");
+    
+    params.params[1] = strtok(params.params[1], "\n");
+    if(*id != -1){
+        strcat(result, "Sunteti deja logat!\n");
+        freeCommandParams(&params);
+        return result;
+    }
+    else{
+        sqlite3_stmt *stmt, *stmt_upd;
+        sqlite3 *db;
+        int open_db = sqlite3_open("mkDB.db", &db);
+        if(open_db != SQLITE_OK){
+            printf("Eroare la deschiderea bazei de date!\n");
+            exit(EXIT_FAILURE);
+        }
+        int res_db, res_upd;
+        char *query1 = sqlite3_mprintf("SELECT * FROM Useri WHERE username = '%q' AND password = '%q';", params.params[0], params.params[1]);
+        printf("%s\n", query1);
+        res_db = sqlite3_prepare_v2(db, query1, -1, &stmt, 0);
+        if(res_db != SQLITE_OK){
+            printf("Eroare la pregatirea interogarii!\n");
+            exit(EXIT_FAILURE);
+        }
+        else{
+            if(sqlite3_step(stmt) == SQLITE_ROW){
+                *id = sqlite3_column_int(stmt, 0);
+                char *query2 = sqlite3_mprintf("UPDATE Useri SET logged = 1 WHERE username = '%q';", params.params[0]);
+                res_upd = sqlite3_prepare_v2(db, query2, -1, &stmt_upd, 0);
+                sqlite3_step(stmt_upd);
+                sqlite3_finalize(stmt_upd);
+                strcat(result, "V-ati logat cu succes!\n");
+            }
+            else{
+                strcat(result, "Login esuat!\n");
+            }
+        }
+        printf("id = %d\n", *id);
+        sqlite3_finalize(stmt);
+        sqlite3_close(db);
     }
 
     freeCommandParams(&params);
@@ -352,14 +389,35 @@ char* modificare_sold(char *cmd){
     return result;
 }
 
-char* logout_client(char *cmd){
+char* logout_client(char *cmd, int *id){
     char* result = (char*)calloc(MAX_COMMAND_LENGTH, sizeof(char));
     if(result == NULL){
         perror("Eroare la alocarea de memorie");
         exit(EXIT_FAILURE);
     }
+    if(*id == -1){
+        strcpy(result, "Nu sunteti logat!\n");
+        return result;
+    }
+    else{
+        sqlite3_stmt *stmt_upd;
+        sqlite3 *db;
+        int open_db = sqlite3_open("mkDB.db", &db);
+        if(open_db != SQLITE_OK){
+            printf("Eroare la deschiderea bazei de date!\n");
+            exit(EXIT_FAILURE);
+        }
+        int res_upd;
 
-    strcpy(result, "Comanda <logout> a fost receptionata!");
+        char *query2 = sqlite3_mprintf("UPDATE Useri SET logged = 0 WHERE id = '%d';", *id);
+        res_upd = sqlite3_prepare_v2(db, query2, -1, &stmt_upd, 0);
+        sqlite3_step(stmt_upd);
+        sqlite3_finalize(stmt_upd);
+        strcat(result, "V-ati delogat cu succes!\n");
+        sqlite3_close(db);
+    }
+    *id = -1;
+    //strcpy(result, "Comanda <logout> a fost receptionata!");
 
     return result;
 }
@@ -383,7 +441,8 @@ char* help_cmd(){
     strcat(result, "9) cautare produs: <nume_produs>\n");
     strcat(result, "10) vizualizare sold\n");
     strcat(result, "11) modificare sold: <adaugare/retragere> <suma>\n");
-    strcat(result, "12) exit\n");
+    strcat(result, "12) logout\n");
+    strcat(result, "13) exit\n");
 
     return result;
 }
@@ -400,11 +459,11 @@ char* invalid_command(){
     return result;
 }
 
-char* manager_comenzi(char *comanda)
+char* manager_comenzi(char *comanda, int *id)
 {
     if (strstr(comanda, "login"))
     {
-        return login_client(comanda);
+        return login_client(comanda, id);
     }
     else if (strstr(comanda, "creare cont"))
     {
@@ -450,11 +509,11 @@ char* manager_comenzi(char *comanda)
         return help_cmd();
     }
     else if(strstr(comanda, "logout")){
-        return logout_client(comanda);
+        return logout_client(comanda, id);
     }
     else if (strstr(comanda, "exit"))
     {
-        return exit_f();
+        return exit_f(id);
     }
     else
     {
@@ -556,6 +615,7 @@ static void *treat(void * arg)
 
 void raspunde(void *arg)
 {
+    int id = -1;
     char nr[MAX_COMMAND_LENGTH];
     //int nr, 
     int i=0;
@@ -581,7 +641,7 @@ void raspunde(void *arg)
         printf ("[Thread %d]Mesajul a fost receptionat...%s\n",tdL.idThread, nr);
                 char *m;
                 //memset(m,0,50);
-                m = manager_comenzi(nr);
+                m = manager_comenzi(nr, &id);
                 /*pregatim mesajul de raspuns */
                 //nr++;      
         printf("[Thread %d]Trimitem mesajul inapoi...%s\n",tdL.idThread, m);
@@ -595,7 +655,6 @@ void raspunde(void *arg)
         }
         free(m);
         fflush(stdout);
-        //else
-        //printf ("[Thread %d]Mesajul a fost trasmis cu succes.\n",tdL.idThread);	
+        
     }
 }
