@@ -186,14 +186,55 @@ char* creare_cont(char *cmd, int *id){
     return result;
 }
 
-char* lista_produse(char *cmd){
+char* lista_produse(char *cmd, int *id){
     char* result = (char*)calloc(MAX_COMMAND_LENGTH, sizeof(char));
     if (result == NULL) {
         perror("Eroare la alocarea de memorie");
         exit(EXIT_FAILURE);
     }
 
-    strcpy(result, "Comanda <lista produse> a fost receptionata!");
+    if(*id == -1){
+        strcpy(result, "Nu sunteti logat!\n");
+        return result;
+    }
+    else{
+        sqlite3_stmt *stmt;
+        sqlite3 *db;
+        int open_db = sqlite3_open("mkDB.db", &db);
+        if(open_db != SQLITE_OK){
+            printf("Eroare la deschiderea bazei de date!\n");
+            exit(EXIT_FAILURE);
+        }
+        int res_db;
+        char *query1 = sqlite3_mprintf("SELECT * FROM Oferte WHERE buyer_id = -1;");
+        res_db = sqlite3_prepare_v2(db, query1, -1, &stmt, 0);
+        if(res_db != SQLITE_OK){
+            printf("Eroare la pregatirea interogarii!\n");
+            exit(EXIT_FAILURE);
+        }
+        else{
+            while(sqlite3_step(stmt) == SQLITE_ROW){
+                char *id = (char*)calloc(10, sizeof(char));
+                char *product_name = (char*)calloc(50, sizeof(char));
+                char *price = (char*)calloc(10, sizeof(char));
+                strcpy(id, sqlite3_column_text(stmt, 0));
+                strcpy(product_name, sqlite3_column_text(stmt, 1));
+                strcpy(price, sqlite3_column_text(stmt, 2));
+                strcat(result, "Id: ");
+                strcat(result, id);
+                strcat(result, " Numar produs: ");
+                strcat(result, product_name);
+                strcat(result, " Pret: ");
+                strcat(result, price);
+                strcat(result, "\n");
+                free(id);
+                free(product_name);
+                free(price);
+            }
+        }
+        sqlite3_finalize(stmt);
+        sqlite3_close(db);
+    }
 
     return result;
 }
@@ -627,7 +668,7 @@ char* manager_comenzi(char *comanda, int *id)
     }
     else if (strstr(comanda, "lista produse"))
     {
-        return lista_produse(comanda);
+        return lista_produse(comanda, id);
     }
     else if (strstr(comanda, "creare oferta"))
     {

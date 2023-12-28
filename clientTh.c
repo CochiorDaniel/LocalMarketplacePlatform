@@ -1,8 +1,3 @@
-/* cliTCPIt.c - Exemplu de client TCP
-   Trimite un nume la server; primeste de la server "Hello nume".
-         
-   Autor: Lenuta Alboaie  <adria@info.uaic.ro> (c)
-*/
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -25,8 +20,7 @@ int main (int argc, char *argv[])
 {
   int sd;			// descriptorul de socket
   struct sockaddr_in server;	// structura folosita pentru conectare 
-  		    // mesajul trimis
-  char nr[MAX_COMMAND_LENGTH];
+  char raspuns[MAX_COMMAND_LENGTH];
   char buf[MAX_COMMAND_LENGTH];
 
   /* exista toate argumentele in linia de comanda? */
@@ -62,7 +56,7 @@ int main (int argc, char *argv[])
     }
 
   int iesire = 1;
-  printf("=== LocalMarketplacePlatform ===\n");
+  printf("==== LocalMarketplacePlatform ====\n");
   printf("Tastati comanda <help> pentru a vedea comenzile disponibile! \n");
   while(1){
   /* citirea mesajului */
@@ -70,10 +64,8 @@ int main (int argc, char *argv[])
   fflush (stdout);
   bzero(buf, MAX_COMMAND_LENGTH);
   read (0, buf, sizeof(buf));
-  //nr=atoi(buf);
-  //scanf("%d",&nr);
-  
-  printf("[client] Am citit %s\n",buf);
+
+  //printf("[client] Am citit %s\n",buf);
   
 
   /* trimiterea mesajului la server */
@@ -84,18 +76,18 @@ int main (int argc, char *argv[])
     }
   else{
     do{
-        bzero(nr, 256);
+        bzero(raspuns, MAX_COMMAND_LENGTH);
         /* citirea raspunsului dat de server 
             (apel blocant pina cind serverul raspunde) */
-        if (read (sd, &nr, sizeof(nr)) < 0)
+        if (read (sd, &raspuns, sizeof(raspuns)) < 0)
         {
             perror ("[client]Eroare la read() de la server.\n");
             return errno;
         }
         fflush(stdout);
         /* afisam mesajul primit */
-        printf ("[client]Mesajul primit este:\n %s\n", nr);
-        if(strcmp(nr, "exit") == 0){
+        printf ("\n%s\n", raspuns);  // mesajul primit de la server
+        if(strcmp(raspuns, "exit") == 0){
             exit(1);
         }
         iesire = -1;
