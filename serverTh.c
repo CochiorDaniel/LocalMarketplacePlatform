@@ -126,7 +126,7 @@ char* login_client(char *cmd, int *id){
         else{
             if(sqlite3_step(stmt) == SQLITE_ROW){
                 *id = sqlite3_column_int(stmt, 0);
-                char *query2 = sqlite3_mprintf("UPDATE Useri SET logged = 1 WHERE username = '%q';", params.params[0]);
+                char *query2 = sqlite3_mprintf("UPDATE Useri SET logged = 1 WHERE id = '%d';", *id);
                 res_upd = sqlite3_prepare_v2(db, query2, -1, &stmt_upd, 0);
                 sqlite3_step(stmt_upd);
                 sqlite3_finalize(stmt_upd);
@@ -437,16 +437,56 @@ char* stergere_oferta(char *cmd, int *id){
     return result;
 }
 
-char* istoric_achizitii(char *cmd){
+char* istoric_achizitii(char *cmd, int *id){
     char* result = (char*)calloc(MAX_COMMAND_LENGTH, sizeof(char));
     if (result == NULL) {
         perror("Eroare la alocarea de memorie");
         exit(EXIT_FAILURE);
     }
 
-    strcpy(result, "Comanda <istoric achizitii> a fost receptionata!");
+    if(*id == -1){
+        strcpy(result, "Nu sunteti logat!\n");
+        return result;
+    }
+    else{
+        sqlite3_stmt *stmt;
+        sqlite3 *db;
+        int open_db = sqlite3_open("mkDB.db", &db);
+        if(open_db != SQLITE_OK){
+            printf("Eroare la deschiderea bazei de date!\n");
+            exit(EXIT_FAILURE);
+        }
+        int res_db;
+        char *query1 = sqlite3_mprintf("SELECT * FROM Oferte WHERE buyer_id = '%d';", *id);
+        res_db = sqlite3_prepare_v2(db, query1, -1, &stmt, 0);
+        if(res_db != SQLITE_OK){
+            printf("Eroare la pregatirea interogarii!\n");
+            exit(EXIT_FAILURE);
+        }
+        else{
+            while(sqlite3_step(stmt) == SQLITE_ROW){
+                char *id = (char*)calloc(10, sizeof(char));
+                char *product_name = (char*)calloc(50, sizeof(char));
+                char *price = (char*)calloc(10, sizeof(char));
+                strcpy(id, sqlite3_column_text(stmt, 0));
+                strcpy(product_name, sqlite3_column_text(stmt, 1));
+                strcpy(price, sqlite3_column_text(stmt, 2));
+                strcat(result, "Id: ");
+                strcat(result, id);
+                strcat(result, " Numar produs: ");
+                strcat(result, product_name);
+                strcat(result, " Pret: ");
+                strcat(result, price);
+                strcat(result, "\n");
+                free(id);
+                free(product_name);
+                free(price);
+            }
+        }
+        sqlite3_finalize(stmt);
+        sqlite3_close(db);
+    }
 
-    // dupa id-ul clientului
     return result;
 }
 
@@ -600,7 +640,7 @@ char* cumparare_produs(char *cmd, int *id){
     return result;
 }
 
-char* cautare_produs(char *cmd){
+char* cautare_produs(char *cmd, int *id){
     char* result = (char*)calloc(MAX_COMMAND_LENGTH, sizeof(char));
     if (result == NULL) {
         perror("Eroare la alocarea de memorie");
@@ -617,13 +657,52 @@ char* cautare_produs(char *cmd){
         return result;
     }
 
-    //strcpy(result, "Comanda <cautare produs> a fost receptionata!");
-    strcat(result, "S-a receptionat comanda: ");
-    strcat(result, params.command);
-    strcat(result, "\n Cu urmatorii parametrii: \n");
-    for(int i=0; i<params.numParams; i++){
-        strcat(result, params.params[i]);
-        strcat(result, "\n");
+    params.params[0] = strtok(params.params[0], "\n");
+
+    if(*id == -1){
+        strcpy(result, "Nu sunteti logat!\n");
+        freeCommandParams(&params);
+        return result;
+    }
+    else{
+        sqlite3_stmt *stmt;
+        sqlite3 *db;
+        int open_db = sqlite3_open("mkDB.db", &db);
+        if(open_db != SQLITE_OK){
+            printf("Eroare la deschiderea bazei de date!\n");
+            exit(EXIT_FAILURE);
+        }
+        int res_db;
+        char *query1 = sqlite3_mprintf("SELECT * FROM Oferte WHERE product_name LIKE '%%%q%%' AND buyer_id = -1;", params.params[0]);
+        res_db = sqlite3_prepare_v2(db, query1, -1, &stmt, 0);
+        if(res_db != SQLITE_OK){
+            printf("Eroare la pregatirea interogarii!\n");
+            printf("Eroare la pregatirea interogarii: %s\n", sqlite3_errmsg(db));
+
+            exit(EXIT_FAILURE);
+        }
+        else{
+            while(sqlite3_step(stmt) == SQLITE_ROW){
+                char *id = (char*)calloc(10, sizeof(char));
+                char *product_name = (char*)calloc(50, sizeof(char));
+                char *price = (char*)calloc(10, sizeof(char));
+                strcpy(id, sqlite3_column_text(stmt, 0));
+                strcpy(product_name, sqlite3_column_text(stmt, 1));
+                strcpy(price, sqlite3_column_text(stmt, 2));
+                strcat(result, "Id: ");
+                strcat(result, id);
+                strcat(result, " Numar produs: ");
+                strcat(result, product_name);
+                strcat(result, " Pret: ");
+                strcat(result, price);
+                strcat(result, "\n");
+                free(id);
+                free(product_name);
+                free(price);
+            }
+        }
+        sqlite3_finalize(stmt);
+        sqlite3_close(db);
     }
 
     freeCommandParams(&params);
@@ -721,11 +800,18 @@ char* modificare_sold(char *cmd, int *id){
                 int suma = atoi(params.params[1]);
                 if(strcmp(params.params[0], "adaugare") == 0){
                     //printf("Am intrat in adaugare!\n");
+                    if(suma < 0){
+                        strcat(result, "Suma trebuie sa fie pozitiva!\n");
+                        free(sold);
+                        freeCommandParams(&params);
+                        sqlite3_finalize(stmt);
+                        sqlite3_close(db);
+                        return result;
+                    }
                     sold_int += suma;
                 }
                 else if(strcmp(params.params[0], "retragere") == 0){
                     //printf("Am intrat in retragere!\n");
-                    sold_int -= suma;
                     if(sold_int < 0){
                         strcat(result, "Nu aveti suficienti bani!\n");
                         free(sold);
@@ -734,6 +820,15 @@ char* modificare_sold(char *cmd, int *id){
                         sqlite3_close(db);
                         return result;
                     }
+                    if(suma < 0){
+                        strcat(result, "Suma trebuie sa fie pozitiva!\n");
+                        free(sold);
+                        freeCommandParams(&params);
+                        sqlite3_finalize(stmt);
+                        sqlite3_close(db);
+                        return result;
+                    }
+                    sold_int -= suma;
                 }
                 else{
                     strcat(result, "Comanda invalida!\n");
@@ -759,6 +854,62 @@ char* modificare_sold(char *cmd, int *id){
     }
 
     freeCommandParams(&params);
+    return result;
+}
+
+char* postari_proprii(char* cmd, int *id){
+    char* result = (char*)calloc(MAX_COMMAND_LENGTH, sizeof(char));
+    if(result == NULL){
+        perror("Eroare la alocarea de memorie");
+        exit(EXIT_FAILURE);
+    }
+    if(*id == -1){
+        strcpy(result, "Nu sunteti logat!\n");
+        return result;
+    }
+    else{
+        sqlite3_stmt *stmt;
+        sqlite3 *db;
+        int open_db = sqlite3_open("mkDB.db", &db);
+        if(open_db != SQLITE_OK){
+            printf("Eroare la deschiderea bazei de date!\n");
+        }
+        int res_db;
+        char *query1 = sqlite3_mprintf("SELECT * FROM Oferte WHERE seller_id = '%d';", *id);
+        res_db = sqlite3_prepare_v2(db, query1, -1, &stmt, 0);
+        if(res_db != SQLITE_OK){
+            printf("Eroare la pregatirea interogarii!\n");
+        }
+        else{
+            while(sqlite3_step(stmt) == SQLITE_ROW){
+                char *id = (char*)calloc(10, sizeof(char));
+                char *product_name = (char*)calloc(50, sizeof(char));
+                char *price = (char*)calloc(10, sizeof(char));
+                int buyer_id_int = sqlite3_column_int(stmt, 4);
+                strcpy(id, sqlite3_column_text(stmt, 0));
+                strcpy(product_name, sqlite3_column_text(stmt, 1));
+                strcpy(price, sqlite3_column_text(stmt, 2));
+                strcat(result, "Id: ");
+                strcat(result, id);
+                strcat(result, " Numar produs: ");
+                strcat(result, product_name);
+                strcat(result, " Pret: ");
+                strcat(result, price);
+                if(buyer_id_int != -1){
+                    strcat(result, " Satatus: Vandut!\n");
+                }
+                else{
+                    strcat(result, " Status: Disponibil!\n");
+                }
+                free(id);
+                free(product_name);
+                free(price);
+            }
+        }
+        sqlite3_finalize(stmt);
+        sqlite3_close(db);
+    }
+
     return result;
 }
 
@@ -813,8 +964,9 @@ char* help_cmd(){
     strcat(result, "9) cautare produs: <nume_produs>\n");
     strcat(result, "10) vizualizare sold\n");
     strcat(result, "11) modificare sold: <adaugare/retragere> <suma>\n");
-    strcat(result, "12) logout\n");
-    strcat(result, "13) exit\n");
+    strcat(result, "12) postari proprii\n");
+    strcat(result, "13) logout\n");
+    strcat(result, "14) exit\n");
 
     return result;
 }
@@ -859,7 +1011,7 @@ char* manager_comenzi(char *comanda, int *id)
     }
     else if (strstr(comanda, "istoric achizitii"))
     {
-        return istoric_achizitii(comanda);
+        return istoric_achizitii(comanda, id);
     }
     else if (strstr(comanda, "cumparare produs"))
     {
@@ -867,7 +1019,7 @@ char* manager_comenzi(char *comanda, int *id)
     }
     else if (strstr(comanda, "cautare produs"))
     {
-        return cautare_produs(comanda);
+        return cautare_produs(comanda, id);
     }
     else if (strstr(comanda, "vizualizare sold"))
     {
@@ -876,6 +1028,10 @@ char* manager_comenzi(char *comanda, int *id)
     else if (strstr(comanda, "modificare sold"))
     {
         return modificare_sold(comanda, id);
+    }
+    else if (strstr(comanda, "postari proprii"))
+    {
+        return postari_proprii(comanda, id);
     }
     else if (strstr(comanda, "help")){
         return help_cmd();
